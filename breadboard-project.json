@@ -1,0 +1,432 @@
+{
+  "format": "velxio-project",
+  "version": 1,
+  "boards": [
+    {
+      "id": "esp32",
+      "boardKind": "esp32",
+      "x": 284.5628881483889,
+      "y": 58.428959629618674,
+      "activeFileGroupId": "group-esp32",
+      "languageMode": "arduino",
+      "serialBaudRate": 0
+    }
+  ],
+  "fileGroups": {
+    "group-esp32": [
+      {
+        "name": "sketch.ino",
+        "content": "#include <Wire.h>\n#include <ArduinoJson.h>\n#include <WiFi.h>\n#include <HTTPClient.h>\n#include <WiFiClientSecure.h>\n#include <SSD1306.h>\n#include <Fragments.h>\n\n\n#define SCREEN_Height 64\n#define SCREEN_Width 128\n\n\nOLED oled(128, 64, 0x3C);\nFragmentManager manager(oled);\n\nFragment gitscreen(manager);\nFragment hcscreen(manager);\n\n\nText* txtfollowers;\nText* txtfollowing;\nText* txtRepos;\nText* txtPrivateRepos;\nText* txtCommits;\nText* txtRestricted;\n\n//hc\nText* txtHCusername;\nText* txtHCTotal;\nText* txtHcLang;\n//whyyyy is it takingg so much time to saveee thissss\nWiFiClientSecure client;\n\nconst char* GITHUB_USERNAME = \"nayan135\";\n\nconst char* api_url = \"https://api.github.com/graphql\";\n\nconst char* ssid = \"your wifi name\";\nconst char* password = \"your wifi password\";\nconst int pirPin=19;\nconst int ObsPin=32;\nconst int buzzPin=18;\nconst int buttonPin=2;\nbool buttonState;\nunsigned long buzzerStart=0;\nbool buzzerActive= false;\nconst unsigned long buzz_duration= 200;\nint currentScreen=0;\nunsigned long lastch= 0;\nconst unsigned long lastch_delay= 250;\nunsigned long PIR= 0;\nconst unsigned long PIR_delay= 250;\nunsigned long OBS= 0;\nconst unsigned long OBS_delay= 250;\n//hyaaaa jhauu layooo\n//errorr solveee kasariiii hunxaaaaa sad pf //breakkk\n//guyss fix thiss onee clicking ctrl+ s just saves the fileee \nconst char* TOKENN =\"fgdggdgfd\"; //will change it later on i know the risk but for now this is it\n int followers, following, repo,prirepo, contri, contri2;\nString  username= \"N/A\", coding_Time=\"CHECK\", toplang=\"guess?\";\n const char* HACKATIME_API_KEY =\"1ggdd\";\n\nunsigned long lastFetch =0;\nconst unsigned long RefreshInt = 15UL * 60UL * 1000UL;\nvoid FetchgithubStats(){\n client.setInsecure();\n\n  HTTPClient http;\n  http.begin(client, api_url);\n  http.addHeader(\"Content-Type\", \"application/json\");\n  http.addHeader(\"Authorization\", \"Bearer \"+ String(TOKENN));\n  http.addHeader(\"User-Agent\", \"NAAESP\");\n String query = \"{\\\"query\\\":\\\"query { user(login: \\\\\\\"nayan135\\\\\\\") {  followers { totalCount } following { totalCount } repositories(privacy: PUBLIC) { totalCount } privaterepo: repositories(privacy: PRIVATE) { totalCount } contributionsCollection(from: \\\\\\\"2026-01-01T00:00:00Z\\\\\\\", to: \\\\\\\"2026-12-31T23:59:59Z\\\\\\\") { totalCommitContributions restrictedContributionsCount }} }\\\"}\";\n  int httpCode= http.POST(query);\n  Serial.println(httpCode);\n  if(httpCode == 200){\n    String load = http.getString();\n    JsonDocument doc;\ndeserializeJson(doc, load);\nSerial.println(load);\n  \n\n  if(doc[\"errors\"].is<JsonArray>()){\n    Serial.println(\"Error in the queryy check it man\");\n  //  showMessage(\"GraphQL error\", \"check toekn\");\n    http.end();\n    return;\n  }\nfollowers = doc[\"data\"][\"user\"][\"followers\"][\"totalCount\"];\nfollowing = doc[\"data\"][\"user\"][\"following\"][\"totalCount\"];\nrepo = doc[\"data\"][\"user\"][\"repositories\"][\"totalCount\"];\nprirepo = doc[\"data\"][\"user\"][\"privaterepo\"][\"totalCount\"];\ncontri = doc[\"data\"][\"user\"][\"contributionsCollection\"][\"totalCommitContributions\"];\ncontri2 = doc[\"data\"][\"user\"][\"contributionsCollection\"][\"restrictedContributionsCount\"];\n\n*txtfollowers = Text(\"Followers: \"+ String(followers),0,0);\n*txtfollowing = Text(\"Following: \"+ String(following),0,10);\n*txtRepos = Text(\"Repos: \"+ String(repo),0,30);\n*txtPrivateRepos =Text(\"Private Repo: \"+ String(prirepo),0,40);\n*txtCommits = Text(\"Commits: \"+ String(contri),0,50);\n*txtRestricted = Text(\"Res. Commit: \"+ String(contri2),0,60);\n}else{\n  Serial.println(\"Http failedd: \");Serial.println(httpCode);\n  Serial.println(http.getString());\n // showMessage(\"API ERROR\", +String(httpCode));\n}\nhttp.end();\n}\n\nvoid Fetchhackatimestats(){\n  client.setInsecure();\n  HTTPClient http;\n\n  http.begin(client,\"https://hackatime.hackclub.com/api/v1/users/nayan135/stats\");\n http.addHeader(\"Content-Type\", \"application/json\");\n http.addHeader(\"Authorization\", \"Bearer \" + String(HACKATIME_API_KEY));\n int httpCode = http.GET();\n Serial.println(httpCode);\nif (httpCode == 200) {\n    String payload = http.getString();\n\nJsonDocument doc;\n    DeserializationError err = deserializeJson(doc, payload);\n    Serial.println(payload);\n    if (err) {\n      Serial.println(\"Hackatime JSON parse failed\");\n      http.end();\n      return;\n    }\nusername= doc[\"data\"][\"username\"].as<String>();\ncoding_Time= doc[\"data\"][\"human_readable_total\"].as<String>();\ntoplang= doc[\"data\"][\"languages\"][0][\"name\"].as<String>();\n\n*txtHCusername = Text(\"UserName \"+ String(username),0,0);\n*txtHCTotal = Text(\"Total Coding: \"+ String(coding_Time),0,17);\n*txtHcLang = Text(\"Top Lang: \"+ String(toplang),0,33);\n}\n}\n\nvoid showScreen(int screenIndex){\n  oled.clearScr(true);\n  if(screenIndex == 0){\n    gitscreen.recycleAll();\n  }else{\n    hcscreen.recycleAll();\n  }\n}\n\nvoid triggerBuzz(){\n  digitalWrite(buzzPin, HIGH);\n  buzzerActive = true;\n  buzzerStart =millis();\n}\nvoid handlebuzzer(){\n  if(buzzerActive && millis() - buzzerStart >= buzz_duration){\n    digitalWrite(buzzPin, LOW);\n    buzzerActive= false;\n  }\n}\nvoid setup(){\n  Serial.begin(115200);\n  Wire.begin(21, 22); \n\n   WiFi.begin(ssid, password);\n   while (WiFi.status() != WL_CONNECTED) {\n    delay(500);\n    Serial.print(\".\");\n  }\n  Serial.println(\"WiFi connected!\");\n\n   Serial.println(\"DCC\");\n  \n   oled.begin();       \n  oled.clearScr();    \n  oled.print(\"Hello!\", 0, 0);\n  oled<<\"This also prints\"<<20<<30;\n  //oled.printAnimated(\"Nayan Acharyaa\",0,20,40,false);\n  delay(500);\n\n\n//random text filler for statss\n\ntxtfollowers =new Text(\"Followers:-- \",0,0);\ntxtfollowing =new Text(\"Following: --\",0,10);\ntxtRepos =new Text(\"Repos: --\",0,30);\ntxtPrivateRepos =new Text(\"Private Repo:-- \",0,40);\ntxtCommits =new Text(\"Commits:-- \",0,50);\ntxtRestricted =new Text(\"Res. Commit:-- \",0,60);\n\ngitscreen.add(txtfollowers);\ngitscreen.add(txtfollowing);\ngitscreen.add(txtRepos);\ngitscreen.add(txtPrivateRepos);\ngitscreen.add(txtCommits);\ngitscreen.add(txtRestricted);\n\n//same thing for HC\n\ntxtHCusername =new Text(\"UserName: --\",0,0);\ntxtHCTotal =new Text(\"Total Coding: --\",0,17);\ntxtHcLang =new Text(\"Top Lang: --\",0,33);\n\nhcscreen.add(txtHCusername);\nhcscreen.add(txtHCTotal);\nhcscreen.add(txtHcLang);\n\n  \n FetchgithubStats();\n Fetchhackatimestats();\n lastFetch= millis();\n\n    pinMode(buttonPin, INPUT);\n   pinMode(pirPin, INPUT);\n   pinMode(ObsPin, INPUT);\n   pinMode(buzzPin, OUTPUT);\n\n\nshowScreen(currentScreen);\ndelay(1000);\nSerial.println(\"Display initialized OK\");\n\n\n}\n\nvoid loop(){\nhandlebuzzer();\n\nif(millis() -lastFetch>=RefreshInt){\n  FetchgithubStats();\n  Fetchhackatimestats();\n  lastFetch=millis();\n\nif(currentScreen == 0) gitscreen.recycle();\nelse hcscreen.recycle();\n}\n\nbuttonState = digitalRead(buttonPin);\nif(buttonState == LOW && millis()- lastch >lastch_delay){\n  lastch = millis();\n  //to just get the 0 when it is one \n  currentScreen = (currentScreen +1)%2;\n  //display(currentScreen);\n  triggerBuzz();\n}\nif(digitalRead(pirPin)== HIGH && millis()- PIR > PIR_delay){\n  PIR= millis();\n  Serial.println(\"PIR TRIGGERED....\");\n  FetchgithubStats();\n  if(currentScreen == 0)gitscreen.recycle();\n  triggerBuzz();\n}\nif(digitalRead(ObsPin)== HIGH && millis()- OBS > OBS_delay){\n  OBS= millis();\n  Serial.println(\"OBSTACLE TRIGGERED....\");\n  Fetchhackatimestats();\n  if(currentScreen == 1)hcscreen.recycle();\n  triggerBuzz();\n}\n\n}"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "breadboard_full_1783651772362_uo9ire0ss",
+      "metadataId": "breadboard-full",
+      "x": 453.07499542236326,
+      "y": 194.49999389648437,
+      "properties": {
+        "rotation": 270
+      }
+    },
+    {
+      "id": "pushbutton_1783746354913_ogb3jc4sl",
+      "metadataId": "pushbutton",
+      "x": 741.5749954223633,
+      "y": 142.59999389648442,
+      "properties": {
+        "color": "red",
+        "pressed": false,
+        "label": "",
+        "xray": false
+      },
+      "attachedTo": {
+        "breadboardId": "breadboard_full_1783651772362_uo9ire0ss",
+        "pinMap": {
+          "1.l": "C50",
+          "2.l": "C48",
+          "1.r": "G50",
+          "2.r": "G48"
+        }
+      }
+    },
+    {
+      "id": "ssd1306_i2c_1783651762943_psw34vjx2",
+      "metadataId": "ssd1306-i2c",
+      "x": 67.28576232644355,
+      "y": 196.4299251182183,
+      "properties": {
+        "protocol": "i2c",
+        "rotation": 0
+      }
+    },
+    {
+      "id": "pir_motion_sensor_1783768729755_5oy53rxvw",
+      "metadataId": "pir-motion-sensor",
+      "x": 557.7631318430892,
+      "y": -265.1189925622881,
+      "properties": {}
+    },
+    {
+      "id": "obstacle_avoidance_module_1783769336456_87wu37hgw",
+      "metadataId": "obstacle-avoidance-module",
+      "x": 875.5054673252317,
+      "y": -502.6391826489392,
+      "properties": {
+        "distance": 100
+      }
+    }
+  ],
+  "wires": [
+    {
+      "waypoints": [
+        {
+          "x": 127.75147278030623,
+          "y": 207.4299251182183
+        },
+        {
+          "x": 127.75147278030623,
+          "y": 163.62749776367022
+        },
+        {
+          "x": 290.5628881483889,
+          "y": 163.62749776367022
+        }
+      ],
+      "id": "wire-1783747149605",
+      "start": {
+        "componentId": "ssd1306_i2c_1783651762943_psw34vjx2",
+        "pinName": "GND",
+        "x": 133.28576232644355,
+        "y": 207.4299251182183
+      },
+      "end": {
+        "componentId": "esp32",
+        "pinName": "GND",
+        "x": 290.5628881483889,
+        "y": 252.42895962961867
+      },
+      "color": "#000000"
+    },
+    {
+      "waypoints": [
+        {
+          "x": 147.05246991267478,
+          "y": 207.4299251182183
+        },
+        {
+          "x": 147.05246991267478,
+          "y": 348.33919754733313
+        },
+        {
+          "x": 418.5628881483889,
+          "y": 348.33919754733313
+        }
+      ],
+      "id": "wire-1783747164636",
+      "start": {
+        "componentId": "ssd1306_i2c_1783651762943_psw34vjx2",
+        "pinName": "VCC",
+        "x": 143.28576232644355,
+        "y": 207.4299251182183
+      },
+      "end": {
+        "componentId": "esp32",
+        "pinName": "3V3",
+        "x": 418.5628881483889,
+        "y": 265.4289596296187
+      },
+      "color": "#cc0000"
+    },
+    {
+      "waypoints": [
+        {
+          "x": 153.28576232644355,
+          "y": 96.79255504537618
+        },
+        {
+          "x": 418.5628881483889,
+          "y": 96.79255504537618
+        }
+      ],
+      "id": "wire-1783747197331",
+      "start": {
+        "componentId": "ssd1306_i2c_1783651762943_psw34vjx2",
+        "pinName": "SCL",
+        "x": 153.28576232644355,
+        "y": 207.4299251182183
+      },
+      "end": {
+        "componentId": "esp32",
+        "pinName": "22",
+        "x": 418.5628881483889,
+        "y": 100.42895962961867
+      },
+      "color": "#22c55e"
+    },
+    {
+      "waypoints": [
+        {
+          "x": 398.6836308338144,
+          "y": 207.4299251182183
+        },
+        {
+          "x": 398.6836308338144,
+          "y": 138.42895962961867
+        }
+      ],
+      "id": "wire-1783747220352",
+      "start": {
+        "componentId": "ssd1306_i2c_1783651762943_psw34vjx2",
+        "pinName": "SDA",
+        "x": 163.28576232644355,
+        "y": 207.4299251182183
+      },
+      "end": {
+        "componentId": "esp32",
+        "pinName": "21",
+        "x": 418.5628881483889,
+        "y": 138.42895962961867
+      },
+      "color": "#22c55e"
+    },
+    {
+      "waypoints": [],
+      "id": "wire-1783747591825",
+      "start": {
+        "componentId": "breadboard_full_1783651772362_uo9ire0ss",
+        "pinName": "G38",
+        "x": 810.5749954223633,
+        "y": 276.79999389648447
+      },
+      "end": {
+        "componentId": "breadboard_full_1783651772362_uo9ire0ss",
+        "pinName": "BN38",
+        "x": 876.5749954223633,
+        "y": 276.79999389648447
+      },
+      "color": "#22c55e"
+    },
+    {
+      "waypoints": [],
+      "id": "wire-1783768559401",
+      "start": {
+        "componentId": "pushbutton_1783746354913_ogb3jc4sl",
+        "pinName": "2.r",
+        "x": 814.5749954223633,
+        "y": 180.59999389648442
+      },
+      "end": {
+        "componentId": "breadboard_full_1783651772362_uo9ire0ss",
+        "pinName": "BN48",
+        "x": 876.5749954223633,
+        "y": 180.79999389648444
+      },
+      "color": "#22c55e"
+    },
+    {
+      "waypoints": [],
+      "id": "wire-1783768824590",
+      "start": {
+        "componentId": "pir_motion_sensor_1783768729755_5oy53rxvw",
+        "pinName": "VCC",
+        "x": 599.9411318430892,
+        "y": -167.1189925622881
+      },
+      "end": {
+        "componentId": "esp32",
+        "pinName": "3V3",
+        "x": 418.5628881483889,
+        "y": 265.4289596296187
+      },
+      "color": "#cc0000"
+    },
+    {
+      "waypoints": [],
+      "id": "wire-1783768831372",
+      "start": {
+        "componentId": "pir_motion_sensor_1783768729755_5oy53rxvw",
+        "pinName": "GND",
+        "x": 619.4046318430892,
+        "y": -167.1189925622881
+      },
+      "end": {
+        "componentId": "breadboard_full_1783651772362_uo9ire0ss",
+        "pinName": "TN55",
+        "x": 705.5749954223631,
+        "y": 113.59999389648445
+      },
+      "color": "#000000"
+    },
+    {
+      "waypoints": [
+        {
+          "x": 599.9411318430892,
+          "y": -167.1189925622881
+        },
+        {
+          "x": 599.9411318430892,
+          "y": 151.67523168684139
+        },
+        {
+          "x": 418.5628881483889,
+          "y": 151.67523168684139
+        }
+      ],
+      "id": "wire-1783768842943",
+      "start": {
+        "componentId": "pir_motion_sensor_1783768729755_5oy53rxvw",
+        "pinName": "OUT",
+        "x": 609.6806318430893,
+        "y": -167.1189925622881
+      },
+      "end": {
+        "componentId": "esp32",
+        "pinName": "19",
+        "x": 418.5628881483889,
+        "y": 151.42895962961867
+      },
+      "color": "#22c55e"
+    },
+    {
+      "waypoints": [
+        {
+          "x": 920.2641818766326,
+          "y": -352.58795360985187
+        },
+        {
+          "x": 599.9411318430892,
+          "y": -352.58795360985187
+        }
+      ],
+      "id": "wire-1783769352970",
+      "start": {
+        "componentId": "obstacle_avoidance_module_1783769336456_87wu37hgw",
+        "pinName": "VCC",
+        "x": 921.5054673252317,
+        "y": -424.6391826489392
+      },
+      "end": {
+        "componentId": "pir_motion_sensor_1783768729755_5oy53rxvw",
+        "pinName": "VCC",
+        "x": 599.9411318430892,
+        "y": -167.1189925622881
+      },
+      "color": "#00FFFF"
+    },
+    {
+      "waypoints": [
+        {
+          "x": 890.2641818766326,
+          "y": -477.96789213123117
+        },
+        {
+          "x": 290.5628881483889,
+          "y": -477.96789213123117
+        }
+      ],
+      "id": "wire-1783769411131",
+      "start": {
+        "componentId": "obstacle_avoidance_module_1783769336456_87wu37hgw",
+        "pinName": "OUT",
+        "x": 891.5054673252317,
+        "y": -424.6391826489392
+      },
+      "end": {
+        "componentId": "esp32",
+        "pinName": "32",
+        "x": 290.5628881483889,
+        "y": 151.42895962961867
+      },
+      "color": "#22c55e"
+    },
+    {
+      "waypoints": [],
+      "id": "wire-1783770883765",
+      "start": {
+        "componentId": "obstacle_avoidance_module_1783769336456_87wu37hgw",
+        "pinName": "GND",
+        "x": 906.5054673252317,
+        "y": -424.6391826489392
+      },
+      "end": {
+        "componentId": "breadboard_full_1783651772362_uo9ire0ss",
+        "pinName": "BN63",
+        "x": 876.5749954223631,
+        "y": 36.799993896484466
+      },
+      "color": "#00FFFF"
+    },
+    {
+      "waypoints": [],
+      "id": "wire-1783771196988",
+      "start": {
+        "componentId": "breadboard_full_1783651772362_uo9ire0ss",
+        "pinName": "TN42",
+        "x": 705.5749954223633,
+        "y": 238.39999389648438
+      },
+      "end": {
+        "componentId": "esp32",
+        "pinName": "GND2",
+        "x": 418.5628881483889,
+        "y": 252.42895962961867
+      },
+      "color": "#000000"
+    },
+    {
+      "waypoints": [],
+      "id": "wire-1783771204373",
+      "start": {
+        "componentId": "breadboard_full_1783651772362_uo9ire0ss",
+        "pinName": "BN53",
+        "x": 876.5749954223633,
+        "y": 132.79999389648432
+      },
+      "end": {
+        "componentId": "breadboard_full_1783651772362_uo9ire0ss",
+        "pinName": "TN44",
+        "x": 705.5749954223633,
+        "y": 219.19999389648433
+      },
+      "color": "#22c55e"
+    },
+    {
+      "waypoints": [
+        {
+          "x": 747.5749954223633,
+          "y": 226.9121704225357
+        },
+        {
+          "x": 439.01521575529966,
+          "y": 226.9121704225357
+        },
+        {
+          "x": 439.01521575529966,
+          "y": 226.48764507071706
+        },
+        {
+          "x": 418.5628881483889,
+          "y": 226.48764507071706
+        }
+      ],
+      "id": "wire-1783774378121",
+      "start": {
+        "componentId": "pushbutton_1783746354913_ogb3jc4sl",
+        "pinName": "1.l",
+        "x": 747.5749954223633,
+        "y": 161.59999389648442
+      },
+      "end": {
+        "componentId": "esp32",
+        "pinName": "2",
+        "x": 418.5628881483889,
+        "y": 227.42895962961867
+      },
+      "color": "#22c55e"
+    }
+  ],
+  "activeBoardId": "esp32",
+  "ignoreStock": false
+}

@@ -2,10 +2,10 @@
 
 
 
+![Github Stats PUller](screenshot.png)
 
 
-
-> Built in [Breadboard](https://breadboard.hackclub.com), a Hack Club program. This project took ~9.7 hours of work.
+> Built in [Breadboard](https://breadboard.hackclub.com), a Hack Club program. This project took ~10 hours of work.
 
 
 
@@ -28,7 +28,8 @@ Relace the gh secret to you own personal access token and hackatime toekn also (
 
 ## Demo
 
-- **Try it:** [https://taniwankenobi.github.io/breadboard-plays/p/106/](https://taniwankenobi.github.io/breadboard-plays/p/106/)
+- **Simulate it live:** [https://breadboard.hackclub.com/share/106](https://breadboard.hackclub.com/share/106), runs the firmware in the Breadboard simulator
+- **View the design:** [https://taniwankenobi.github.io/breadboard-plays/p/106/](https://taniwankenobi.github.io/breadboard-plays/p/106/)
 
 
 ## Schematic
@@ -61,7 +62,7 @@ Build journal entries are kept in [`journals.md`](journals.md).
 
 
 
-*Made in [Breadboard](https://breadboard.hackclub.com) — 9.7h of work*
+*Made in [Breadboard](https://breadboard.hackclub.com) — 10h of work*
 
 
 
